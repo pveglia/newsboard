@@ -8,6 +8,8 @@
               [:head
                [:title "news-anevia"]
                                         ;(include-css "/css/reset.css")
+               [:script {:src "https://login.persona.org/include.js"}]
+               [:script {:src "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"}]
                (include-js "/js/news.js")
                ]
               [:body

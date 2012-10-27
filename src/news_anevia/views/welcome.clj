@@ -1,8 +1,11 @@
 (ns news-anevia.views.welcome
   (:require [news-anevia.views.common :as common]
             [taoensso.carmine :as car]
-            [noir.response :as resp])
-  (:use [noir.core :only [defpage render]]
+            [noir.response :as resp]
+            [noir.session :as session]
+            [clj-http.client :as client]
+            [clojure.data.json :as json])
+  (:use [noir.core :only [defpage render defpartial]]
         [hiccup.form]
         [hiccup.element]
         [clojure.math.numeric-tower]))
@@ -34,17 +37,24 @@
                       :item-id %1))
          ids)))
 
+(defpartial login []
+  (if (session/get "email")
+    [:p
+     (format "ciao, %s" (session/get "email"))
+     [:br]
+     [:button {:type "button" :id "signout" } "sign out"]
+     [:script (format "var currentUser=\"%s\";" (session/get "email"))]]
+    [:p
+     [:button {:type "button" :id "signin" } "sign in"]
+     [:script "var currentUser=null;"]]))
 
 (defpage "/" []
   (common/layout
-   [:h1 "Anevia News"]
-   [:div#notification ]
+   (login)
+   [:h1 "News"]
+;   [:div#notification ]
    (common/news-list (redis-get nil))
-   [:p (link-to "/new" "Submit a new story")]))
-
-(defpage "/new" []
-  (common/layout
-   [:h1 "Post new content!"]
+   [:h2 "Post new content!"]
    (form-to [:post "/new"]
             (label "new-content" "New content:")
             (text-field "new-content")
@@ -67,25 +77,35 @@
   (while true
     (let [items (redis-get true)]
       (println "Updating scores!!")
-      (println items)
       (doseq [it items]
         (let [new-score (score-fn it)]
-          (println (format "updating score %f for member %s" new-score (:item-id it)))
           (wcar (car/zadd ss-key
                           new-score
-                          (:item-id it)))  )
-
-        ))
-    (Thread/sleep 5000)))
+                          (:item-id it))))))
+    (Thread/sleep 10000)))
 
 (defpage [:post "/new"] {:as news}
   (redis-submit (:new-content news))
-  (common/layout
-   [:p (format "submitted: %s" (common/render-submission (:new-content news)))
-    [:p
-     (link-to "/new" "New submission") [:br]
-     (link-to "/" "Home Page")]]))
+  (resp/redirect "/"))
 
 (defpage [:post "/vote"] {:keys [item]}
   (let [votes (wcar (car/hincrby item "votes" 1))]
     (resp/xml (format "%d" votes))))
+
+(defpage [:post "/auth/login"] {assertion :assertion}
+  (let [reply (client/post "https://verifier.login.persona.org/verify"
+                           {:form-params
+                            {:audience "http://localhost:8080"
+                             :assertion assertion}})
+        status (:status reply)
+        data (json/read-json (:body reply) true)]
+    (if (= status 200)
+      (if (= (:status data) "okay")
+        (do
+          (session/put! "email" (:email data))
+          (resp/empty))
+        (resp/status 401 (:reason data))))))
+
+(defpage [:post "/auth/logout"] {}
+  (session/remove! "email")
+  (resp/empty))

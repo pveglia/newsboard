@@ -15,6 +15,8 @@
 (defmacro wcar [& body] `(car/with-conn p s ~@body))
 
 (def ss-key "news:sortedset")
+(def key-latest "news:latest")
+(def pages (hash-map "Home" "/home" "Latest" "/latest"))
 
 (defn epoch []
   (int (/ (System/currentTimeMillis) 1000)))
@@ -24,13 +26,10 @@
 (defn parseInt [s]
   (Integer. (re-find #"\d+" s)))
 
-(defn redis-get [all]
+(defn redis-get [key all]
   (let [end-index (if all -1 20)
-        ids (wcar (car/zrevrange ss-key 0 end-index))]
-    (println ids)
+        ids (wcar (car/zrevrange key 0 end-index))]
     (map #(let [res (wcar (car/hgetall %1))]
-            (println res)
-;            (Thread/sleep 1000)
             (hash-map :data (nth res 1)
                       :date (parseInt (nth res 3))
                       :votes (parseInt (nth res 5 "0"))
@@ -48,17 +47,55 @@
      [:button {:type "button" :id "signin" } "sign in"]
      [:script "var currentUser=null;"]]))
 
-(defpage "/" []
-  (common/layout
-   (login)
-   [:h1 "News"]
-;   [:div#notification ]
-   (common/news-list (redis-get nil))
+(defpartial header [route]
+  (let [mods (map #(if (= %1 route)
+                     (format "[%s]" %1)
+                     (link-to (get pages %1) (format "[%s]" %1)))
+                  (keys pages))
+        pages (reduce conj [] mods)
+        res [[[:br]] pages [(login)]]
+        res2 (into [] (apply concat (concat res)))]
+    (println res2)
+    (concat res2)))
+
+
+;            [page pages]
+;      (if (= page route)
+;        (conj res (format "[%s]" page))
+;        (conj res (link-to page (format "[%s]" page)))))
+;    (conj res [:br])
+;    (conj res (login))
+;    (println res)])
+;    res)
+;;  [:p (link-to "/" "[Home]") " " (link-to "/latest" "[Latest News]")
+;;   [:br]
+;;   (login)]
+;   )
+
+
+(defpartial newContent []
    [:h2 "Post new content!"]
    (form-to [:post "/new"]
             (label "new-content" "New content:")
             (text-field "new-content")
-            (submit-button "post"))))
+            (submit-button "post")))
+
+(defpage "/" []
+  (resp/redirect "/home"))
+
+(defpage "/home" []
+  (common/layout
+   (header "Home")
+   [:h1 "News"]
+   (common/news-list (redis-get ss-key nil))
+   (newContent)))
+
+(defpage "/latest" []
+  (common/layout
+   (header "Latest")
+   [:h1 "Latest News"]
+   (common/news-list (redis-get key-latest nil))
+   (newContent)))
 
 (defn redis-submit [news]
   (let [id (format "news:%d" (wcar (car/incr "news:id")))
@@ -66,6 +103,7 @@
     (wcar (car/hmset id "data" news "date" now "votes" 1))
                                         ; insert into sorted set
     (wcar (car/zadd ss-key 0 id))
+    (wcar (car/zadd key-latest now id))
     ))
 
 (defn score-fn [item]
@@ -75,7 +113,7 @@
 
 (defn update-scores []
   (while true
-    (let [items (redis-get true)]
+    (let [items (redis-get ss-key true)]
       (println "Updating scores!!")
       (doseq [it items]
         (let [new-score (score-fn it)]
@@ -89,8 +127,9 @@
   (resp/redirect "/"))
 
 (defpage [:post "/vote"] {:keys [item]}
+  (println item)
   (let [votes (wcar (car/hincrby item "votes" 1))]
-    (resp/xml (format "%d" votes))))
+    (resp/json {:votes (format "%d" votes)})))
 
 (defpage [:post "/auth/login"] {assertion :assertion}
   (let [reply (client/post "https://verifier.login.persona.org/verify"

@@ -1,15 +1,28 @@
-function voteUp(item){
-    xml = new XMLHttpRequest();
-    xml.onreadystatechange=function(){
-        if(xml.readyState == 4 && xml.status == 200){
-            console.log(xml.responseText);
-            document.getElementById(item).innerHTML = xml.responseText;
-        }
-    }
-    xml.open("POST", "/vote");
-    xml.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-    xml.send("item=" + item);
-}
+// function voteUp(item){
+//     xml = new XMLHttpRequest();
+//     xml.onreadystatechange=function(){
+//         if(xml.readyState == 4 && xml.status == 200){
+//             console.log(xml.responseText);
+//             document.getElementById(item).innerHTML = xml.responseText;
+//         }
+//     }
+//     xml.open("POST", "/vote");
+//     xml.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+//     xml.send("item=" + item);
+// }
+
+function voteUp(item) {
+    $.ajax({
+        type: 'POST',
+        url: '/vote',
+        data: {item:item},
+        success: function(res, status, xhr) {
+            console.log(res['votes']);
+            document.getElementById(item).innerHTML = res['votes'];
+        },
+        error: function(xhr, status, err){ alert("vote failure" + err); }
+    });
+};
 
 $(document).ready(function(){
     var signinLink = document.getElementById('signin');
@@ -33,7 +46,7 @@ $(document).ready(function(){
                 url: '/auth/login', // This is a URL on your website.
                 data: {assertion: assertion},
                 success: function(res, status, xhr) { window.location.reload(); },
-                error: function(xhr, status, err) { alert("login failure" + res); }
+                error: function(xhr, status, err) { alert("login failure" + err); }
             });
         },
         onlogout: function() {

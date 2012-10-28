@@ -35,5 +35,6 @@
                 :onclick (format "voteUp(\"%s\")" i)} "++"]]]))
 
 (defpartial news-list [items]
+  (println items)
   [:table#items {:width "90%" :border "1"}
    (map render-item items)])

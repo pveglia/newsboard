@@ -19,9 +19,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 ## Todo
 
-* forbid multiple votes (via authentication and session)
 * Styling CSS
-* Refactoring (move methods in the right place MVC)
 * github or other
 
 ## DONE
@@ -30,3 +28,5 @@ Distributed under the Eclipse Public License, the same as Clojure.
 * use jquery for vote ajax action
 * make a latest list
 * put form in the first page and redirect to the first page
+* forbid multiple votes (via authentication and session)
+* Refactoring (move methods in the right place MVC)

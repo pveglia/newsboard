@@ -1,6 +1,5 @@
 (ns news-anevia.views.welcome
-  (:require [news-anevia.views.common :as common]
-            [news-anevia.models.backend :as be]
+  (:require [news-anevia.models.backend :as be]
             [taoensso.carmine :as car]
             [noir.response :as resp]
             [noir.session :as session]
@@ -9,10 +8,50 @@
   (:use [noir.core :only [defpage render defpartial]]
         [hiccup.form]
         [hiccup.element]
-        [hiccup.core :only [html]]))
+        [hiccup.page]))
 
 
 (def pages [["Home" "/home"] ["Latest" "/latest"]])
+
+(defpartial layout [route & content]
+  (html5
+   [:head
+    [:title "news"]
+                                        ;(include-css "/css/reset.css")
+    [:script {:src "https://login.persona.org/include.js"}]
+    [:script {:src "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"}]
+    (include-js "/js/news.js")
+    ]
+   [:body
+    [:div#wrapper
+     (header route)
+     [:div#messages]
+     content]]))
+
+(defpartial code [& content]
+  [:code content])
+
+(defpartial render-submission [str]
+  (if (re-matches #"https?://.*" str)
+    (link-to {:class "submission"} str str)
+    [:code str]))
+
+(defpartial render-item [item]
+  (let [d (:data item)
+        v (:votes item)
+        i (:item-id item)]
+    [:tr
+     [:td {:class "data"} (render-submission d)
+      [:div#subm (format "submitted by %s" (:subm item))]]
+     [:td {:id i :class "votes"} v]
+     [:td [:button {:type "button" :disabled (be/voted? (session/get "email") i)
+                :onclick (format "voteUp(\"%s\", this)" i)} "++"]]]))
+
+(defpartial news-list [items]
+  (println items)
+  [:table#items {:width "90%" :border "1"}
+   [:tr [:th "Items"] [:th "votes"] [:th "Vote!"]]
+   (map render-item items)])
 
 (defpartial login []
   (if (session/get "email")
@@ -36,36 +75,42 @@
 
 
 (defpartial newContent []
-   [:h2 "Post new content!"]
-   (form-to [:post "/new"]
-            (label "new-content" "New content:")
-            (text-field "new-content")
-            (submit-button "post")))
+  (if (session/get "email")
+    (concat [[:h2 "Post new content!"]
+             (form-to [:post "/new"]
+                      (label "new-content" "New content:")
+                      (text-field "new-content")
+                      (submit-button "post"))])))
 
 (defpage "/" []
   (resp/redirect "/home"))
 
 (defpage "/home" []
-  (common/layout
-   (header "Home")
-   (common/news-list (be/redis-get be/ss-key nil))
+  (layout "Home"
+   (news-list (be/redis-get be/ss-key nil))
    (newContent)))
 
 (defpage "/latest" []
-  (common/layout
-   (header "Latest")
+  (layout "Latest"
    [:h1 "Latest News"]
-   (common/news-list (be/redis-get be/key-latest nil))
+   (news-list (be/redis-get be/key-latest nil))
    (newContent)))
 
 (defpage [:post "/new"] {:as news}
-  (be/redis-submit (:new-content news))
-  (resp/redirect "/"))
+  (if (session/get "email")
+    (do (be/redis-submit (:new-content news) (session/get "email"))
+        (resp/redirect "/"))
+    (resp/status 401 "Login required")))
 
 (defpage [:post "/vote"] {:keys [item]}
   (println item)
-  (let [votes (be/vote item)]
-    (resp/json {:votes (format "%d" votes)})))
+  (if (session/get "email")
+    (let [votes (be/vote (session/get "email") item)]
+      (if votes
+        (resp/json {:votes (format "%d" votes)})
+        (resp/status 405 "Already voted")))
+    (resp/status 401 "Login required"))
+  )
 
 (defpage [:post "/auth/login"] {assertion :assertion}
   (let [reply (client/post "https://verifier.login.persona.org/verify"

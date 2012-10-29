@@ -7,6 +7,9 @@
 (def ss-key "news:sortedset")
 (def key-latest "news:latest")
 
+(defn voter-key [id]
+  (format "voters:%s" id))
+
 (def p (car/make-conn-pool))
 (def s (car/make-conn-spec))
 
@@ -28,13 +31,14 @@
             (hash-map :data (nth res 1)
                       :date (parseInt (nth res 3))
                       :votes (parseInt (nth res 5 "0"))
-                      :item-id %1))
+                      :item-id %1
+                      :subm (nth res 7 "Unknown")))
          ids)))
 
-(defn redis-submit [news]
+(defn redis-submit [news subm]
   (let [id (format "news:%d" (wcar (car/incr "news:id")))
         now (epoch)]
-    (wcar (car/hmset id "data" news "date" now "votes" 1))
+    (wcar (car/hmset id "data" news "date" now "votes" 1 "subm" subm))
                                         ; insert into sorted set
     (wcar (car/zadd ss-key 0 id))
     (wcar (car/zadd key-latest now id))
@@ -56,5 +60,13 @@
                           (:item-id it))))))
     (Thread/sleep 10000)))
 
-(defn vote [item]
-  (wcar (car/hincrby item "votes" 1)))
+(defn vote [voter item]
+  (if (not (voted? voter item))
+    (do
+      (wcar (car/sadd (voter-key item) voter))
+      (wcar (car/hincrby item "votes" 1)))
+    false))
+
+(defn voted? [voter item]
+  (let [res (= 1 (wcar (car/sismember (voter-key item) voter)))]
+    res))

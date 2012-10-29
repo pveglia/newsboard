@@ -11,16 +11,19 @@
 //     xml.send("item=" + item);
 // }
 
-function voteUp(item) {
+function voteUp(item, btn) {
+    btn.disabled = true;
     $.ajax({
         type: 'POST',
         url: '/vote',
         data: {item:item},
         success: function(res, status, xhr) {
-            console.log(res['votes']);
             document.getElementById(item).innerHTML = res['votes'];
         },
-        error: function(xhr, status, err){ alert("vote failure" + err); }
+        error: function(xhr, status, err){
+            $('#messages').html("Cannot vote twice");
+            console.log(err);
+        }
     });
 };
 

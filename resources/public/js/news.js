@@ -28,11 +28,13 @@ $(document).ready(function(){
     var signinLink = document.getElementById('signin');
     if (signinLink) {
         signinLink.onclick = function() { navigator.id.request(); };
+        // signinLink.style.cursor = 'pointer';
     }
 
     var signoutLink = document.getElementById('signout');
     if (signoutLink) {
         signoutLink.onclick = function() { navigator.id.logout(); };
+        // signoutLink.style.cursor = 'pointer';
     }
 
     navigator.id.watch({

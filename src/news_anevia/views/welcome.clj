@@ -8,7 +8,8 @@
   (:use [noir.core :only [defpage render defpartial]]
         [hiccup.form]
         [hiccup.element]
-        [clojure.math.numeric-tower]))
+        [clojure.math.numeric-tower]
+        [hiccup.core :only [html]]))
 
 (def p (car/make-conn-pool))
 (def s (car/make-conn-spec))
@@ -16,7 +17,7 @@
 
 (def ss-key "news:sortedset")
 (def key-latest "news:latest")
-(def pages (hash-map "Home" "/home" "Latest" "/latest"))
+(def pages [["Home" "/home"] ["Latest" "/latest"]])
 
 (defn epoch []
   (int (/ (System/currentTimeMillis) 1000)))
@@ -38,39 +39,23 @@
 
 (defpartial login []
   (if (session/get "email")
-    [:p
-     (format "ciao, %s" (session/get "email"))
-     [:br]
-     [:button {:type "button" :id "signout" } "sign out"]
-     [:script (format "var currentUser=\"%s\";" (session/get "email"))]]
-    [:p
-     [:button {:type "button" :id "signin" } "sign in"]
-     [:script "var currentUser=null;"]]))
+    (concat [(format "ciao, %s! " (session/get "email"))
+        [:a {:href "#" :id "signout" } "sign out"]
+        [:script (format "var currentUser=\"%s\";" (session/get "email"))]])
+    (concat [[:a {:href "#" :id "signin" } "sign in"]
+             [:script "var currentUser=null;"]])))
+
+(defpartial navigation [route]
+  (let [mods (map #(if (= (first %1) route)
+                     (format "[%s]" (first %1))
+                     (link-to (second %1) (format "[%s]" (first %1))))
+                  pages)]
+    (concat mods)))
 
 (defpartial header [route]
-  (let [mods (map #(if (= %1 route)
-                     (format "[%s]" %1)
-                     (link-to (get pages %1) (format "[%s]" %1)))
-                  (keys pages))
-        pages (reduce conj [] mods)
-        res [[[:br]] pages [(login)]]
-        res2 (into [] (apply concat (concat res)))]
-    (println res2)
-    (concat res2)))
-
-
-;            [page pages]
-;      (if (= page route)
-;        (conj res (format "[%s]" page))
-;        (conj res (link-to page (format "[%s]" page)))))
-;    (conj res [:br])
-;    (conj res (login))
-;    (println res)])
-;    res)
-;;  [:p (link-to "/" "[Home]") " " (link-to "/latest" "[Latest News]")
-;;   [:br]
-;;   (login)]
-;   )
+  [:table {:width "90%"} [:tr [:td (navigation route)]
+                          [:td {:align "right"} (login)]]]
+  [:h1 "News"])
 
 
 (defpartial newContent []
@@ -86,7 +71,6 @@
 (defpage "/home" []
   (common/layout
    (header "Home")
-   [:h1 "News"]
    (common/news-list (redis-get ss-key nil))
    (newContent)))
 

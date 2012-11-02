@@ -22,8 +22,8 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 ## Todo
 
+* add time ago
 * Styling CSS
-* github or other
 
 ## DONE
 

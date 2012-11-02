@@ -4,7 +4,8 @@
             [noir.response :as resp]
             [noir.session :as session]
             [clj-http.client :as client]
-            [clojure.data.json :as json])
+            [clojure.data.json :as json]
+            [clojure.math.numeric-tower :as math])
   (:use [noir.core :only [defpage render defpartial]]
         [hiccup.form]
         [hiccup.element]
@@ -15,7 +16,7 @@
 
 (defpartial login []
   (if (session/get "email")
-    (concat [(format "ciao, %s! " (session/get "email"))
+    (concat [(format "Hello, %s! " (session/get "email"))
         [:a {:href "#" :id "signout" } "sign out"]
         [:script (format "var currentUser=\"%s\";" (session/get "email"))]])
     (concat [[:a {:href "#" :id "signin" } "sign in"]
@@ -31,13 +32,13 @@
 (defpartial header [route]
   [:table {:width "90%"} [:tr [:td (navigation route)]
                           [:td {:align "right"} (login)]]]
-  [:h1 "News"])
+  [:h1 "Newsboard"])
 
 (defpartial layout [route & content]
   (html5
    [:head
-    [:title "news"]
-                                        ;(include-css "/css/reset.css")
+    [:title "Newsboard"]
+    (include-css "/css/newsboard.css")
     [:script {:src "https://login.persona.org/include.js"}]
     [:script {:src "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"}]
     (include-js "/js/news.js")
@@ -56,27 +57,46 @@
     (link-to {:class "submission"} str str)
     [:code str]))
 
+(defn tee [item]
+  (println item)
+  item)
+
+(defn render-date [item]
+  (if (contains? item :date)
+    (let [diff (- (be/epoch) (get item :date))
+          a [[(* 24 (* 60 60)) "day"] [(* 60 60) "hour"] [60 "minute"]]
+          fnn' (fn [xs]
+                 (let [f (drop-while #(= (first %1) 0) xs)]
+                   (if (= 0 (count f)) (list (list 0 "minutes")) f)))
+          render (fn [i] (format "%d %s%s" (biginteger (first i)) (second i)
+                                 (if (= (first i) 1) "" "s")))]
+      (->
+       (map (fn [[sec str]] (list (math/floor (/ diff sec)) str)) a)
+       (fnn') (first) (render)))
+    "??"))
+
 (defpartial render-item [item]
   (let [d (:data item)
         v (:votes item)
         i (:item-id item)]
     [:tr
-     [:td {:class "data"} (render-submission d)
-      [:div#subm (format "submitted by %s" (:subm item))]]
      [:td {:id i :class "votes"} v]
      [:td [:button {:type "button" :disabled (be/voted? (session/get "email") i)
-                :onclick (format "voteUp(\"%s\", this)" i)} "++"]]]))
+                    :onclick (format "voteUp(\"%s\", this)" i)} "++"]]
+     [:td {:class "data"} (render-submission d)
+      [:div#subm (format "submitted by %s, %s ago" (:subm item)
+                         (render-date item))]]]))
 
 (defpartial news-list [items]
-  (println items)
-  [:table#items {:width "90%" :border "1"}
-   [:tr [:th "Items"] [:th "votes"] [:th "Vote!"]]
+  ;; (println items)
+  [:table#items {:width "90%"}
+   [:tr [:th "Votes"] [:th "Vote"] [:th "News"]]
    (map render-item items)])
 
 
 (defpartial newContent []
   (if (session/get "email")
-    (concat [[:h2 "Post new content!"]
+    (concat [[:h2 "Post new content:"]
              (form-to [:post "/new"]
                       (label "new-content" "New content:")
                       (text-field "new-content")
@@ -87,14 +107,15 @@
 
 (defpage "/home" []
   (layout "Home"
-   (news-list (be/redis-get be/ss-key nil))
-   (newContent)))
+          [:h2 "News Ranking"]
+          (news-list (be/redis-get be/ss-key nil))
+          (newContent)))
 
 (defpage "/latest" []
   (layout "Latest"
-   [:h1 "Latest News"]
-   (news-list (be/redis-get be/key-latest nil))
-   (newContent)))
+          [:h2 "Latest News"]
+          (news-list (be/redis-get be/key-latest nil))
+          (newContent)))
 
 (defpage [:post "/new"] {:as news}
   (if (session/get "email")

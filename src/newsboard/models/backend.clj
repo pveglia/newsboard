@@ -1,4 +1,4 @@
-(ns news-anevia.models.backend
+(ns newsboard.models.backend
   (:require [taoensso.carmine :as car]
             [clojure.math.numeric-tower :as math]
 ))
@@ -60,13 +60,13 @@
                           (:item-id it))))))
     (Thread/sleep 10000)))
 
+(defn voted? [voter item]
+  (let [res (= 1 (wcar (car/sismember (voter-key item) voter)))]
+    res))
+
 (defn vote [voter item]
   (if (not (voted? voter item))
     (do
       (wcar (car/sadd (voter-key item) voter))
       (wcar (car/hincrby item "votes" 1)))
     false))
-
-(defn voted? [voter item]
-  (let [res (= 1 (wcar (car/sismember (voter-key item) voter)))]
-    res))

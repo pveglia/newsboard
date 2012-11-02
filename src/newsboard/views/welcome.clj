@@ -1,5 +1,5 @@
-(ns news-anevia.views.welcome
-  (:require [news-anevia.models.backend :as be]
+(ns newsboard.views.welcome
+  (:require [newsboard.models.backend :as be]
             [taoensso.carmine :as car]
             [noir.response :as resp]
             [noir.session :as session]
@@ -12,6 +12,26 @@
 
 
 (def pages [["Home" "/home"] ["Latest" "/latest"]])
+
+(defpartial login []
+  (if (session/get "email")
+    (concat [(format "ciao, %s! " (session/get "email"))
+        [:a {:href "#" :id "signout" } "sign out"]
+        [:script (format "var currentUser=\"%s\";" (session/get "email"))]])
+    (concat [[:a {:href "#" :id "signin" } "sign in"]
+             [:script "var currentUser=null;"]])))
+
+(defpartial navigation [route]
+  (let [mods (map #(if (= (first %1) route)
+                     (format "[%s]" (first %1))
+                     (link-to (second %1) (format "[%s]" (first %1))))
+                  pages)]
+    (concat mods)))
+
+(defpartial header [route]
+  [:table {:width "90%"} [:tr [:td (navigation route)]
+                          [:td {:align "right"} (login)]]]
+  [:h1 "News"])
 
 (defpartial layout [route & content]
   (html5
@@ -52,26 +72,6 @@
   [:table#items {:width "90%" :border "1"}
    [:tr [:th "Items"] [:th "votes"] [:th "Vote!"]]
    (map render-item items)])
-
-(defpartial login []
-  (if (session/get "email")
-    (concat [(format "ciao, %s! " (session/get "email"))
-        [:a {:href "#" :id "signout" } "sign out"]
-        [:script (format "var currentUser=\"%s\";" (session/get "email"))]])
-    (concat [[:a {:href "#" :id "signin" } "sign in"]
-             [:script "var currentUser=null;"]])))
-
-(defpartial navigation [route]
-  (let [mods (map #(if (= (first %1) route)
-                     (format "[%s]" (first %1))
-                     (link-to (second %1) (format "[%s]" (first %1))))
-                  pages)]
-    (concat mods)))
-
-(defpartial header [route]
-  [:table {:width "90%"} [:tr [:td (navigation route)]
-                          [:td {:align "right"} (login)]]]
-  [:h1 "News"])
 
 
 (defpartial newContent []

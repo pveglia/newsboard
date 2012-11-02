@@ -1,9 +1,9 @@
-(ns news-anevia.server
+(ns newsboard.server
   (:require [noir.server :as server]
-            [news-anevia.views.welcome :as welcome]
-            [news-anevia.models.backend :as be]))
+            [newsboard.views.welcome :as welcome]
+            [newsboard.models.backend :as be]))
 
-(server/load-views-ns 'news-anevia.views)
+(server/load-views-ns 'newsboard.views)
 
 
 (defn -main [& m]
@@ -12,4 +12,4 @@
         score-updater (Thread. #(be/update-scores))]
     (.start score-updater)
     (server/start port {:mode mode
-                        :ns 'news-anevia})))
+                        :ns 'newsboard})))

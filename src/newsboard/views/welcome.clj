@@ -30,9 +30,11 @@
     (concat mods)))
 
 (defpartial header [route]
-  [:table {:width "90%"} [:tr [:td (navigation route)]
-                          [:td {:align "right"} (login)]]]
-  [:h1 "Newsboard"])
+  [:div#header
+   [:table {:width "100%"} [:tr [:td (navigation route)]
+                           [:td {:align "right"} (login)]]]
+  [:h1 "Newsboard"]]
+)
 
 (defpartial layout [route & content]
   (html5
@@ -47,7 +49,7 @@
     [:div#wrapper
      (header route)
      [:div#messages]
-     content]]))
+     [:div#body content]]]))
 
 (defpartial code [& content]
   [:code content])
@@ -79,18 +81,19 @@
   (let [d (:data item)
         v (:votes item)
         i (:item-id item)]
-    [:tr
-     [:td {:id i :class "votes"} v]
-     [:td [:button {:type "button" :disabled (be/voted? (session/get "email") i)
-                    :onclick (format "voteUp(\"%s\", this)" i)} "++"]]
-     [:td {:class "data"} (render-submission d)
-      [:div#subm (format "submitted by %s, %s ago" (:subm item)
-                         (render-date item))]]]))
+    [:tr {:id i}
+     [:td {:class "votes"} v]
+     [:td {:class "voteb"}
+      [:button {:type "button" :disabled (be/voted? (session/get "email") i)
+                :onclick (format "voteUp(\"%s\", this)" i)} "++"]]
+     [:td {:class "data"}
+      [:div {:class "item"} (render-submission d)]
+      [:div {:class "meta"} (format "submitted by %s, %s ago. " (:subm item)
+                                     (render-date item))
+       (link-to {:onclick (format "deleteItem(\"%s\");" i)} "#" "delete")]]]))
 
 (defpartial news-list [items]
-  ;; (println items)
   [:table#items {:width "90%"}
-   [:tr [:th "Votes"] [:th "Vote"] [:th "News"]]
    (map render-item items)])
 
 
@@ -108,13 +111,13 @@
 (defpage "/home" []
   (layout "Home"
           [:h2 "News Ranking"]
-          (news-list (be/redis-get be/ss-key nil))
+          (news-list (be/redis-get be/ss-key 19))
           (newContent)))
 
 (defpage "/latest" []
   (layout "Latest"
           [:h2 "Latest News"]
-          (news-list (be/redis-get be/key-latest nil))
+          (news-list (be/redis-get be/key-latest 19))
           (newContent)))
 
 (defpage [:post "/new"] {:as news}
@@ -124,14 +127,12 @@
     (resp/status 401 "Login required")))
 
 (defpage [:post "/vote"] {:keys [item]}
-  (println item)
   (if (session/get "email")
     (let [votes (be/vote (session/get "email") item)]
       (if votes
         (resp/json {:votes (format "%d" votes)})
         (resp/status 405 "Already voted")))
-    (resp/status 401 "Login required"))
-  )
+    (resp/status 401 "Login required")))
 
 (defpage [:post "/auth/login"] {assertion :assertion}
   (let [reply (client/post "https://verifier.login.persona.org/verify"
@@ -149,4 +150,8 @@
 
 (defpage [:post "/auth/logout"] {}
   (session/remove! "email")
+  (resp/empty))
+
+(defpage [:delete "/delete/:id"] {id :id}
+  (be/redis-remove id)
   (resp/empty))

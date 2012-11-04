@@ -1,0 +1,34 @@
+div#header {
+  width: 100%;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  z-index: 1;
+  background: #2E8AE6;
+  font-weight: bold;
+}
+
+div#header h1 {
+  margin: 0px 0px 0px 0px;
+}
+div#body {
+  position: relative;
+  top: 50px;
+}
+
+table#items td.votes {
+  font-size: 70%;
+  width: 30px;
+}
+
+table#items td.voteb {
+  width: 50px;
+}
+
+table#items div.item {
+  font-size: 120%;
+}
+
+table#items div.meta {
+  font-size: 80%;
+}

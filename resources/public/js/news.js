@@ -5,7 +5,9 @@ function voteUp(item, btn) {
         url: '/vote',
         data: {item:item},
         success: function(res, status, xhr) {
-            document.getElementById(item).innerHTML = res['votes'];
+            var row = document.getElementById(item);
+            var cell =row.getElementsByClassName("votes")[0];
+            cell.innerHTML = res['votes'];
         },
         error: function(xhr, status, err){
             $('#messages').html("Cannot vote twice");
@@ -13,6 +15,22 @@ function voteUp(item, btn) {
         }
     });
 };
+
+function deleteItem(id){
+    $.ajax({
+        type: 'delete',
+        url: '/delete/' + id,
+        success: function(res, status, xhr){
+            console.log(res);
+            // remove row
+            var row = document.getElementById(id);
+            row.parentNode.removeChild(row);
+        },
+        error: function(xhr, status, err){
+            $('#messages').html("Cannot remove item" + id);
+            console.log(err);
+        }})
+}
 
 $(document).ready(function(){
     var signinLink = document.getElementById('signin');

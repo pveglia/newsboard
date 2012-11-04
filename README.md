@@ -3,7 +3,8 @@
 A website written in noir which has an interface that is somehow
 similar to popular news aggregator
 [hacker news](http://news.ycombinator.com). It uses
-[Redis](http://redis.io/) as a backend.
+[Redis](http://redis.io/) as a backend through
+[carmine](https://github.com/ptaoussanis/carmine).
 
 ## Usage
 
@@ -22,8 +23,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 ## Todo
 
-* add time ago
-* Styling CSS
+* comments
 
 ## DONE
 
@@ -33,3 +33,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 * put form in the first page and redirect to the first page
 * forbid multiple votes (via authentication and session)
 * Refactoring (move methods in the right place MVC)
+* add "time ago"
+* delete items
+* thread safeness (check redis transactions)
+* Styling CSS

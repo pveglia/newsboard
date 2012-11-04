@@ -22,10 +22,18 @@
 (defn parseInt [s]
   (Integer. (re-find #"\d+" s)))
 
+(defn score-fn [votes date]
+  (let [elapsed (/ (- (epoch) date) 3600)] ; in hours
+    (/ votes (math/expt (+ 2 elapsed) 1.8))))
+
+(defn get-score [item]
+  (let [v (:votes item)
+        date (:date item)]
+    (score-fn v date)))
 
 ;; redis interaction
-(defn redis-get [key all]
-  (let [end-index (if all -1 20)
+(defn redis-get [key n]
+  (let [end-index n
         ids (wcar (car/zrevrange key 0 end-index))]
     (map #(let [res (wcar (car/hgetall %1))]
             (hash-map :data (nth res 1)
@@ -38,23 +46,25 @@
 (defn redis-submit [news subm]
   (let [id (format "news:%d" (wcar (car/incr "news:id")))
         now (epoch)]
-    (wcar (car/hmset id "data" news "date" now "votes" 1 "subm" subm))
-                                        ; insert into sorted set
-    (wcar (car/zadd ss-key 0 id))
-    (wcar (car/zadd key-latest now id))
-    ))
+    (wcar (car/atomically [id]
+                          (car/hmset id "data" news
+                                     "date" now
+                                     "votes" 1
+                                     "subm" subm) ; insert into sorted set
+                          (car/zadd ss-key (score-fn 1 now) id)
+                          (car/zadd key-latest now id)))))
 
-(defn score-fn [item]
-  (let [v (:votes item)
-        elapsed (/ (- (epoch) (:date item)) 3600)] ; in hours
-    (/ (- v 1) (math/expt (+ 2 elapsed) 1.8))))
+(defn redis-remove [id]
+   (wcar (car/zrem ss-key id)
+         (car/zrem key-latest id)
+         (car/del (format "voters:%s" id))
+         (car/del id)))
 
 (defn update-scores []
   (while true
-    (let [items (redis-get ss-key true)]
-      (println "Updating scores!!")
+    (let [items (redis-get ss-key -1)]
       (doseq [it items]
-        (let [new-score (score-fn it)]
+        (let [new-score (get-score it)]
           (wcar (car/zadd ss-key
                           new-score
                           (:item-id it))))))
@@ -66,7 +76,7 @@
 
 (defn vote [voter item]
   (if (not (voted? voter item))
-    (do
-      (wcar (car/sadd (voter-key item) voter))
-      (wcar (car/hincrby item "votes" 1)))
+      (let [resp (wcar (car/sadd (voter-key item) voter)
+                       (car/hincrby item "votes" 1))]
+        (last resp))
     false))

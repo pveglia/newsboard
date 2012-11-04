@@ -46,13 +46,12 @@
 (defn redis-submit [news subm]
   (let [id (format "news:%d" (wcar (car/incr "news:id")))
         now (epoch)]
-    (wcar (car/atomically [id]
-                          (car/hmset id "data" news
-                                     "date" now
-                                     "votes" 1
-                                     "subm" subm) ; insert into sorted set
-                          (car/zadd ss-key (score-fn 1 now) id)
-                          (car/zadd key-latest now id)))))
+    (wcar (car/hmset id "data" news
+                     "date" now
+                     "votes" 1
+                     "subm" subm) ; insert into sorted set
+          (car/zadd key-score (score-fn 1 now) id)
+          (car/zadd key-latest now id))))
 
 (defn redis-remove [id]
    (wcar (car/zrem ss-key id)

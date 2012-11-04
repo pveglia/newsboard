@@ -15,6 +15,7 @@
 (def pages [["Home" "/home"] ["Latest" "/latest"]])
 
 (defpartial login []
+  ; "notify user if he is logged in."
   (if (session/get "email")
     (concat [(format "Hello, %s! " (session/get "email"))
         [:a {:href "#" :id "signout" } "sign out"]
@@ -23,6 +24,7 @@
              [:script "var currentUser=null;"]])))
 
 (defpartial navigation [route]
+  ; "Outputs navigation link on top of the page."
   (let [mods (map #(if (= (first %1) route)
                      (format "[%s]" (first %1))
                      (link-to (second %1) (format "[%s]" (first %1))))
@@ -30,6 +32,7 @@
     (concat mods)))
 
 (defpartial header [route]
+  ; "Output page header (navigation + login)."
   [:div#header
    [:table {:width "100%"} [:tr [:td (navigation route)]
                            [:td {:align "right"} (login)]]]
@@ -37,6 +40,7 @@
 )
 
 (defpartial layout [route & content]
+  ; "page layout."
   (html5
    [:head
     [:title "Newsboard"]
@@ -52,18 +56,24 @@
      [:div#body content]]]))
 
 (defpartial code [& content]
+  ; "Wraps content into a code tag."
   [:code content])
 
 (defpartial render-submission [str]
+  ;  "Given a submission, renders it depending on its type:
+  ; if the regexp matches items is a link and it is embedded
+  ; into an `a` tag."
   (if (re-matches #"https?://.*" str)
     (link-to {:class "submission"} str str)
     [:code str]))
 
 (defn tee [item]
+  "debug function for threading macro"
   (println item)
   item)
 
 (defn render-date [item]
+  "Outputs a `time ago` part of item."
   (if (contains? item :date)
     (let [diff (- (be/epoch) (get item :date))
           a [[(* 24 (* 60 60)) "day"] [(* 60 60) "hour"] [60 "minute"]]
@@ -78,6 +88,7 @@
     "??"))
 
 (defpartial render-item [item]
+  ; "Outputs a table line for each element."
   (let [d (:data item)
         v (:votes item)
         i (:item-id item)]
@@ -93,11 +104,13 @@
        (link-to {:onclick (format "deleteItem(\"%s\");" i)} "#" "delete")]]]))
 
 (defpartial news-list [items]
+  ; "Get item list and renders them."
   [:table#items {:width "90%"}
    (map render-item items)])
 
 
 (defpartial newContent []
+  ; "Renders part of page used to type a new item."
   (if (session/get "email")
     (concat [[:h2 "Post new content:"]
              (form-to [:post "/new"]
@@ -106,27 +119,33 @@
                       (submit-button "post"))])))
 
 (defpage "/" []
+  ; "home page just redirects to /home."
   (resp/redirect "/home"))
 
 (defpage "/home" []
+  ; "Home page, shows the list of content ordered by score
+  ; and a form to input new items."
   (layout "Home"
           [:h2 "News Ranking"]
-          (news-list (be/redis-get be/ss-key 19))
+          (news-list (be/redis-get be/key-score 19))
           (newContent)))
 
 (defpage "/latest" []
+  ; "List content in reverse chronological order."
   (layout "Latest"
           [:h2 "Latest News"]
           (news-list (be/redis-get be/key-latest 19))
           (newContent)))
 
 (defpage [:post "/new"] {:as news}
+  ; "End point to create a new content."
   (if (session/get "email")
     (do (be/redis-submit (:new-content news) (session/get "email"))
         (resp/redirect "/"))
     (resp/status 401 "Login required")))
 
 (defpage [:post "/vote"] {:keys [item]}
+  ; "End point to vote for a content."
   (if (session/get "email")
     (let [votes (be/vote (session/get "email") item)]
       (if votes
@@ -135,6 +154,7 @@
     (resp/status 401 "Login required")))
 
 (defpage [:post "/auth/login"] {assertion :assertion}
+  ; "BrowserId endpoint, it forwards the assertion to persona verifier."
   (let [reply (client/post "https://verifier.login.persona.org/verify"
                            {:form-params
                             {:audience "http://localhost:8080"
@@ -149,9 +169,11 @@
         (resp/status 401 (:reason data))))))
 
 (defpage [:post "/auth/logout"] {}
+  "Logout"
   (session/remove! "email")
   (resp/empty))
 
 (defpage [:delete "/delete/:id"] {id :id}
+;  "Delete a content."
   (be/redis-remove id)
   (resp/empty))

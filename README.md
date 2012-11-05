@@ -23,6 +23,8 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 ## Todo
 
+* just delete if i'm the owner of item
+* improve style, put some padding on the left
 * comments
 
 ## DONE

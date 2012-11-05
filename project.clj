@@ -5,6 +5,5 @@
                            [com.taoensso/carmine "0.11.2"]
                            [org.clojure/math.numeric-tower "0.0.1"]
                            [clj-http "0.5.6"]
-                           [org.clojure/data.json "0.2.0"]
-                           ]
+                           [org.clojure/data.json "0.2.1"]]
             :main newsboard.server)

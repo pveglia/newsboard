@@ -1,6 +1,6 @@
 pom.xml
 *jar
 /lib/
-*/classes/*
+*classes/*
 .lein-deps-sum
 .cake

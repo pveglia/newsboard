@@ -1,11 +1,12 @@
 div#header {
-  width: 100%;
+  width: 98%;
   position: fixed;
   top: 0px;
   left: 0px;
   z-index: 1;
   background: #2E8AE6;
   font-weight: bold;
+  padding: 1%;
 }
 
 div#header h1 {
@@ -13,7 +14,8 @@ div#header h1 {
 }
 div#body {
   position: relative;
-  top: 50px;
+  top: 90px;
+  padding: 1%;
 }
 
 table#items td.votes {

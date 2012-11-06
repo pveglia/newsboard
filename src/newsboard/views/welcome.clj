@@ -91,7 +91,8 @@
   ; "Outputs a table line for each element."
   (let [d (:data item)
         v (:votes item)
-        i (:item-id item)]
+        i (:item-id item)
+        s (:subm item)]
     [:tr {:id i}
      [:td {:class "votes"} v]
      [:td {:class "voteb"}
@@ -99,9 +100,12 @@
                 :onclick (format "voteUp(\"%s\", this)" i)} "++"]]
      [:td {:class "data"}
       [:div {:class "item"} (render-submission d)]
-      [:div {:class "meta"} (format "submitted by %s, %s ago. " (:subm item)
-                                     (render-date item))
-       (link-to {:onclick (format "deleteItem(\"%s\");" i)} "#" "delete")]]]))
+      [:div {:class "meta"} (format "submitted by %s, %s ago. " s
+                                    (render-date item))
+       (when (and (session/get "email")
+                  (= (session/get "email") s))
+         (link-to {:onclick (format "deleteItem(\"%s\");" i)}
+                  "#" "delete"))]]]))
 
 (defpartial news-list [items]
   ; "Get item list and renders them."

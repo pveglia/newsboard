@@ -36,21 +36,29 @@ a much more simplified version of hacker news algorithm."
         date (:date item)]
     (score-fn v date)))
 
-;; redis interaction
+(defn get-item [id]
+  (let [item (conversion (redis2map (wcar (car/hgetall* id))) id)]
+    item))
+
+(defn conversion [item id]
+  (-> item
+      (update-in [:date] #(parseInt %1))
+      (update-in [:votes] #(parseInt %1))
+      (conj {:item-id id})))
+
+(defn redis2map [item]
+  (into {} (for [[k v] item]
+             [(keyword k) v])))
+
 (defn redis-get [key n]
   "Return a list of items (maps) ordered as in redis sorted set
 at `key`. Items are built from values contained in redis hashes."
   (let [end-index n
-        ids (wcar (car/zrevrange key 0 end-index))]
-    (map #(let [res (wcar (car/hgetall %1))]
-            (hash-map :data (nth res 1)
-                      :date (parseInt (nth res 3))
-                      :votes (parseInt (nth res 5 "0"))
-                      :item-id %1
-                      :subm (nth res 7 "Unknown")))
-         ids)))
+        ids (wcar (car/zrevrange key 0 end-index))
+        items (map #(get-item %1) ids)]
+    items))
 
-(defn redis-submit [news subm]
+(defn redis-submit [news title subm]
   "add a new item into redis backend. Id is created by an incrementing
 value stored in key `news:id`."
   (let [id (format "news:%d" (wcar (car/incr "news:id")))
@@ -94,3 +102,21 @@ redis sets, each item has a set of voters."
                        (car/hincrby item "votes" 1))]
         (last resp))
     false))
+
+(defn build-tree [rest node]
+  (let [children? (fn [item] (= (:parent item) (:id node)))
+        children (filter #(children? %1) rest)
+        others (filter #(complement (children? %1)) rest)]
+    {:id (:id node)
+     :children (map (partial build others) children)}))
+
+(defn get-comment [cid]
+  (let [item (redis2map (wcar (car/hgetall* cid)))]
+    (println item)
+    item))
+
+(defn get-comments [id]
+  (let [cids (wcar car/smembers (format "comments:%s" id))
+        comments (map #(get-comment %1) cids)
+        trees (build-tree comments {:id ""})]
+    trees))

@@ -185,3 +185,10 @@
 ;  "Delete a content."
   (be/redis-remove id)
   (resp/empty))
+
+(defpage "/comments/:id" {id :id}
+  (let [item (be/get-item id)
+        ;comments (be/get-comments id)
+        ]
+    (layout "Comments"
+          [:div "Comments to: " [:span (render-submission item)]])))

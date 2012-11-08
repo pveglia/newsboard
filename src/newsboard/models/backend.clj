@@ -58,7 +58,8 @@ value stored in key `news:id`."
     (wcar (car/hmset id "data" news
                      "date" now
                      "votes" 1
-                     "subm" subm) ; insert into sorted set
+                     "subm" subm
+                     "title" title) ; insert into sorted set
           (car/zadd key-score (score-fn 1 now) id)
           (car/zadd key-latest now id))))
 

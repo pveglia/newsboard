@@ -59,13 +59,13 @@
   ; "Wraps content into a code tag."
   [:code content])
 
-(defpartial render-submission [str]
+(defpartial render-submission [item]
   ;  "Given a submission, renders it depending on its type:
   ; if the regexp matches items is a link and it is embedded
   ; into an `a` tag."
-  (if (re-matches #"https?://.*" str)
-    (link-to {:class "submission"} str str)
-    [:code str]))
+  (if (re-matches #"https?://.*" (:data item))
+    (link-to {:class "submission"} (:data item) (:title item))
+    (list [:span (:title item)] [:code (:data item)])))
 
 (defn tee [item]
   "debug function for threading macro"
@@ -99,7 +99,7 @@
       [:button {:type "button" :disabled (be/voted? (session/get "email") i)
                 :onclick (format "voteUp(\"%s\", this)" i)} "++"]]
      [:td {:class "data"}
-      [:div {:class "item"} (render-submission d)]
+      [:div {:class "item"} (render-submission item)]
       [:div {:class "meta"} (format "submitted by %s, %s ago. " s
                                     (render-date item))
        (when (and (session/get "email")
@@ -118,6 +118,8 @@
   (if (session/get "email")
     (concat [[:h2 "Post new content:"]
              (form-to [:post "/new"]
+                      (label "title" "Title:")
+                      (text-field "title")
                       (label "new-content" "New content:")
                       (text-field "new-content")
                       (submit-button "post"))])))
@@ -144,7 +146,9 @@
 (defpage [:post "/new"] {:as news}
   ; "End point to create a new content."
   (if (session/get "email")
-    (do (be/redis-submit (:new-content news) (session/get "email"))
+    (do (be/redis-submit (:new-content news)
+                         (:title news)
+                         (session/get "email"))
         (resp/redirect "/"))
     (resp/status 401 "Login required")))
 

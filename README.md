@@ -23,8 +23,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 ## Todo
 
-* improve style, put some padding on the left
-* comments
+* comments (started)
 
 ## DONE
 
@@ -39,3 +38,4 @@ Distributed under the Eclipse Public License, the same as Clojure.
 * thread safeness (check redis transactions)
 * Styling CSS
 * just delete if i'm the owner of item
+* improve style, put some padding on the left

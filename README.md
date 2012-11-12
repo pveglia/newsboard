@@ -23,7 +23,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 ## Todo
 
-* comments (started)
+* delete comments 
 
 ## DONE
 
@@ -39,3 +39,4 @@ Distributed under the Eclipse Public License, the same as Clojure.
 * Styling CSS
 * just delete if i'm the owner of item
 * improve style, put some padding on the left
+* comments

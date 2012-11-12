@@ -73,3 +73,22 @@ $(document).ready(function(){
         }
     });
 })
+
+var formsunhidden = [];
+
+function showCommentForm(id){
+    console.log("show comment form");
+    div = document.getElementById('form:' + id);
+    console.log(div);
+    $(div).show('0.2');
+    formsunhidden.push(id);
+    // toggle command
+    iden = 'div#'+ id.replace(':', '\\:') + ' span#commands a';
+    l = $(iden)[1];
+    l.innerHTML="hide";
+    l.onclick = function (){
+        $(div).hide('0.2');
+        l.innerHTML="show";
+        l.onclick = function () {showCommentForm(id);}
+    };
+}

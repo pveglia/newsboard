@@ -65,7 +65,7 @@
   ; into an `a` tag."
   (if (re-matches #"https?://.*" (:data item))
     (link-to {:class "submission"} (:data item) (:title item))
-    (list [:span (:title item)] [:code (:data item)])))
+    (list [:span (:title item)] "&nbsp" [:code (:data item)])))
 
 (defn tee [item]
   "debug function for threading macro"
@@ -102,6 +102,11 @@
       [:div {:class "item"} (render-submission item)]
       [:div {:class "meta"} (format "submitted by %s, %s ago. " s
                                     (render-date item))
+       (let [ncomments (be/count-comments i)]
+         (link-to (format "/comments/%s" i)
+                  (format "%d comment%s" ncomments (if (not= ncomments 1)
+                                                     "s" ""))))
+       " "
        (when (and (session/get "email")
                   (= (session/get "email") s))
          (link-to {:onclick (format "deleteItem(\"%s\");" i)}
@@ -186,9 +191,57 @@
   (be/redis-remove id)
   (resp/empty))
 
+(defpartial commentform [id parent]
+  (when (session/get "email")
+    (form-to [:post (format "/comments/%s" id)]
+             (label "comment" "Comment:")
+             (text-area "comment")
+             (hidden-field "parent" parent)
+             (submit-button "post"))))
+
+(defpartial render-comments [level comments]
+  (for [node comments]
+    [:div {:id (:id node)
+           :style "margin-left: 25px"
+           :class "comment"}
+     [:span#comment (:comment node)]
+     [:br]
+     [:span#meta (format "by %s, %s ago." (:subm node) (render-date node))]
+     [:span#commands
+      " "
+      (link-to
+       {:onclick (format "showCommentForm(\"%s\");" (:id node))}
+       "#" "reply")
+      (when (= (session/get "email") (:subm node))
+        (list
+         " or "
+         (link-to
+          {:onclick (format "deleteComment(\"%s\");" (:id node))}
+          "#" "delete")))]
+     [:div {:id (format "form:%s" (:id node))
+            :style "display: none;"}
+      (commentform (:newsid node) (:id node))]
+     (render-comments (inc level) (:children node))]))
+
 (defpage "/comments/:id" {id :id}
+  (println "render comment GET" id)
   (let [item (be/get-item id)
-        ;comments (be/get-comments id)
+        comments (be/get-comments id)
         ]
     (layout "Comments"
-          [:div "Comments to: " [:span (render-submission item)]])))
+            [:div "Comments to: " [:span (render-submission item)]]
+            [:div#comments (render-comments 0 (:children comments))]
+            [:h3 "Insert new comment"]
+            (commentform id ""))))
+
+(defpage [:post "/comments/:id"] [:as post]
+  (println post)
+  (println "XXXXXX" (:id post))
+  (if (session/get "email")
+    (do
+      (be/add-comment (conj post {:subm (session/get "email")
+                                  :newsid (:id post)}))
+      ;(resp/redirect (format "/comments/%s" (:id post)))
+      (render "/comments/:id" post)
+      )
+    (resp/status 401 "Loging required")))

@@ -36,10 +36,6 @@ a much more simplified version of hacker news algorithm."
         date (:date item)]
     (score-fn v date)))
 
-(defn get-item [id]
-  (let [item (conversion (redis2map (wcar (car/hgetall* id))) id)]
-    item))
-
 (defn conversion [item id]
   (-> item
       (update-in [:date] #(parseInt %1))
@@ -49,6 +45,10 @@ a much more simplified version of hacker news algorithm."
 (defn redis2map [item]
   (into {} (for [[k v] item]
              [(keyword k) v])))
+
+(defn get-item [id]
+  (let [item (conversion (redis2map (wcar (car/hgetall* id))) id)]
+    item))
 
 (defn redis-get [key n]
   "Return a list of items (maps) ordered as in redis sorted set
@@ -71,9 +71,17 @@ value stored in key `news:id`."
           (car/zadd key-score (score-fn 1 now) id)
           (car/zadd key-latest now id))))
 
+(defn delete-comments [id]
+  (let [cset (format "comments:%s" id)
+        comments (wcar (car/smembers cset))]
+    (println comments)
+    (wcar (doall (map #(car/del %1) comments))
+          (car/del cset))))
+
 (defn redis-remove [id]
-  "remove a news item from backend (sorted sets, hash and votes)."
-   (wcar (car/zrem key-score id)
+  "remove a news item from backend (sorted sets, hash, votes and comments)."
+  (delete-comments id)
+  (wcar (car/zrem key-score id)
          (car/zrem key-latest id)
          (car/del (format "voters:%s" id))
          (car/del id)))
@@ -103,20 +111,39 @@ redis sets, each item has a set of voters."
         (last resp))
     false))
 
+(defn split [p xs]
+  (let [t [] f []]
+    (for [x xs]
+      (if (p x)
+        (conj t x)
+        (conj f x)))
+    [t f]))
+
 (defn build-tree [rest node]
   (let [children? (fn [item] (= (:parent item) (:id node)))
         children (filter #(children? %1) rest)
         others (filter #(complement (children? %1)) rest)]
-    {:id (:id node)
-     :children (map (partial build others) children)}))
+    (conj node {:children (map (partial build-tree others) children)})))
 
 (defn get-comment [cid]
   (let [item (redis2map (wcar (car/hgetall* cid)))]
-    (println item)
-    item))
+    (-> item
+        (update-in [:date] #(parseInt %1)))))
 
 (defn get-comments [id]
-  (let [cids (wcar car/smembers (format "comments:%s" id))
+  (let [cids (wcar (car/smembers (format "comments:%s" id)))
         comments (map #(get-comment %1) cids)
         trees (build-tree comments {:id ""})]
     trees))
+(defn count-comments [id]
+  (count (wcar (car/smembers (format "comments:%s" id)))))
+
+(defn add-comment [post]
+  (let [id (format "comment:%d" (wcar (car/incr "comments:id")))
+        now (epoch)]
+    (wcar (car/hmset id "id" id "parent" (:parent post)
+                     "comment" (:comment post)
+                     "subm" (:subm post)
+                     "date" now
+                     "newsid" (:newsid post))
+          (car/sadd (format "comments:%s" (:id post)) id))))

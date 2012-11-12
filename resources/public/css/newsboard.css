@@ -34,3 +34,16 @@ table#items div.item {
 table#items div.meta {
   font-size: 80%;
 }
+
+div.comment {
+  margin-left: 25px;
+  margin-top: 10px;
+}
+
+div.comment span#meta {
+  font-size: 80%;
+}
+
+div.comment span#commands {
+  font-size: 80%;
+}

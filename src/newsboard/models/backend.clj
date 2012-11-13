@@ -55,7 +55,7 @@ a much more simplified version of hacker news algorithm."
 at `key`. Items are built from values contained in redis hashes."
   (let [end-index n
         ids (wcar (car/zrevrange key 0 end-index))
-        items (map #(get-item %1) ids)]
+        items (map #(get-item %1) ids)] ; TODO, optimize redis pipelining
     items))
 
 (defn redis-submit [news title subm]
@@ -74,7 +74,6 @@ value stored in key `news:id`."
 (defn delete-comments [id]
   (let [cset (format "comments:%s" id)
         comments (wcar (car/smembers cset))]
-    (println comments)
     (wcar (doall (map #(car/del %1) comments))
           (car/del cset))))
 
@@ -92,6 +91,7 @@ value stored in key `news:id`."
     (let [items (redis-get key-score -1)]
       (doseq [it items]
         (let [new-score (get-score it)]
+          ; TODO mv wcar before doseq to enable pipelining
           (wcar (car/zadd key-score
                           new-score
                           (:item-id it))))))
@@ -125,16 +125,23 @@ redis sets, each item has a set of voters."
         others (filter #(complement (children? %1)) rest)]
     (conj node {:children (map (partial build-tree others) children)})))
 
-(defn get-comment [cid]
-  (let [item (redis2map (wcar (car/hgetall* cid)))]
+(defn get-comment [c]
+  (let [item (redis2map c)]
     (-> item
         (update-in [:date] #(parseInt %1)))))
 
 (defn get-comments [id]
   (let [cids (wcar (car/smembers (format "comments:%s" id)))
-        comments (map #(get-comment %1) cids)
+        raw-comments (wcar (doall (map car/hgetall* cids)))
+                                        ; workaround to redis
+                                        ; non-linear behaviour
+                                        ; when there is only one
+                                        ; comment wrap result into a list
+        adj (if (= 1 (count cids)) [raw-comments] raw-comments)
+        comments (map get-comment adj)
         trees (build-tree comments {:id ""})]
     trees))
+
 (defn count-comments [id]
   (count (wcar (car/smembers (format "comments:%s" id)))))
 

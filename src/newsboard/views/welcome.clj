@@ -228,7 +228,7 @@
         comments (be/get-comments id)
         ]
     (layout "Comments"
-            [:div "Comments to: " [:span (render-submission item)]]
+            [:div#ctitle "Comments to: " [:span (render-submission item)]]
             [:div#comments (render-comments 0 (:children comments))]
             [:h3 "Insert new comment"]
             (commentform id ""))))

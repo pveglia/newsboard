@@ -38,12 +38,20 @@ table#items div.meta {
 div.comment {
   margin-left: 25px;
   margin-top: 10px;
+  font-size: 90%;
 }
 
 div.comment span#meta {
   font-size: 80%;
+  color: gray;
 }
 
 div.comment span#commands {
   font-size: 80%;
+  color: gray;
+}
+
+div#ctitle span {
+  font-size: 110%;
+  font-color: gray;
 }

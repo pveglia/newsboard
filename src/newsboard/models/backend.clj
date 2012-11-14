@@ -119,11 +119,20 @@ redis sets, each item has a set of voters."
         (conj f x)))
     [t f]))
 
+(defn comment-age [tree]
+  (if (= 0 (count (:children tree)))
+    (:date tree)
+    (apply min (map comment-age (:children tree)))))
+
+(def comment-age-memo (memoize comment-age))
+
 (defn build-tree [rest node]
   (let [children? (fn [item] (= (:parent item) (:id node)))
         children (filter #(children? %1) rest)
         others (filter #(complement (children? %1)) rest)]
-    (conj node {:children (map (partial build-tree others) children)})))
+    (conj node {:children
+                (sort-by comment-age-memo >
+                         (map (partial build-tree others) children))})))
 
 (defn get-comment [c]
   (let [item (redis2map c)]

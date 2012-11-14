@@ -79,7 +79,7 @@
           a [[(* 24 (* 60 60)) "day"] [(* 60 60) "hour"] [60 "minute"]]
           fnn' (fn [xs]
                  (let [f (drop-while #(= (first %1) 0) xs)]
-                   (if (= 0 (count f)) (list (list 0 "minutes")) f)))
+                   (if (= 0 (count f)) (list (list 0 "minute")) f)))
           render (fn [i] (format "%d %s%s" (biginteger (first i)) (second i)
                                  (if (= (first i) 1) "" "s")))]
       (->

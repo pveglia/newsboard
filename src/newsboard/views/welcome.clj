@@ -212,12 +212,11 @@
       (link-to
        {:onclick (format "showCommentForm(\"%s\");" (:id node))}
        "#" "reply")
-      (when (= (session/get "email") (:subm node))
-        (list
-         " or "
-         (link-to
-          {:onclick (format "deleteComment(\"%s\");" (:id node))}
-          "#" "delete")))]
+;      (when (= (session/get "email") (:subm node))
+;        (list " or " (link-to
+;          {:onclick (format "deleteComment(\"%s\");" (:id node))}
+;          "#" "delete")))
+     ]
      [:div {:id (format "form:%s" (:id node))
             :style "display: none;"}
       (commentform (:newsid node) (:id node))]

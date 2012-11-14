@@ -20,23 +20,3 @@ lein run
 Copyright (C) 2012 Paolo Veglia
 
 Distributed under the Eclipse Public License, the same as Clojure.
-
-## Todo
-
-* delete comments 
-
-## DONE
-
-* Authentication browserID?
-* use jquery for vote ajax action
-* make a latest list
-* put form in the first page and redirect to the first page
-* forbid multiple votes (via authentication and session)
-* Refactoring (move methods in the right place MVC)
-* add "time ago"
-* delete items
-* thread safeness (check redis transactions)
-* Styling CSS
-* just delete if i'm the owner of item
-* improve style, put some padding on the left
-* comments

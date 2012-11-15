@@ -40,8 +40,7 @@
 )
 
 (defpartial layout [route & content]
-  ; "page layout."
-  (html5
+   (html5
    [:head
     [:title "Newsboard"]
     (include-css "/css/newsboard.css")
@@ -133,17 +132,21 @@
   ; "home page just redirects to /home."
   (resp/redirect "/home"))
 
+(defmacro nocache [fname & args]
+  `(resp/set-headers {"Cache-Control" "max-age=0; private"}
+                     (~fname ~@args)))
+
 (defpage "/home" []
   ; "Home page, shows the list of content ordered by score
   ; and a form to input new items."
-  (layout "Home"
-          [:h2 "News Ranking"]
-          (news-list (be/redis-get be/key-score 19))
-          (newContent)))
+  (nocache layout "Home"
+           [:h2 "News Ranking"]
+           (news-list (be/redis-get be/key-score 19))
+           (newContent)))
 
 (defpage "/latest" []
   ; "List content in reverse chronological order."
-  (layout "Latest"
+  (nocache layout "Latest"
           [:h2 "Latest News"]
           (news-list (be/redis-get be/key-latest 19))
           (newContent)))
@@ -223,11 +226,10 @@
      (render-comments (inc level) (:children node))]))
 
 (defpage "/comments/:id" {id :id}
-  (println "render comment GET" id)
   (let [item (be/get-item id)
         comments (be/get-comments id)
         ]
-    (layout "Comments"
+    (nocache layout "Comments"
             [:div#ctitle "Comments to: " [:span (render-submission item)]]
             [:div#comments (render-comments 0 (:children comments))]
             [:h3 "Insert new comment"]

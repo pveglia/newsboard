@@ -33,6 +33,11 @@ table#items div.item {
 
 table#items div.meta {
   font-size: 80%;
+  color:gray;
+}
+
+table#items div.meta a{
+  color: gray;
 }
 
 div.comment {
@@ -53,5 +58,13 @@ div.comment span#commands {
 
 div#ctitle span {
   font-size: 110%;
-  font-color: gray;
+  color: gray;
+}
+
+table#items a {
+  text-decoration: none;
+}
+
+div.item a:visited {
+  color: gray;
 }

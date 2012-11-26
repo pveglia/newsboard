@@ -17,10 +17,13 @@
 (defpartial login []
   ; "notify user if he is logged in."
   (if (session/get "email")
-    (concat [(format "Hello, %s! " (session/get "email"))
-        [:a {:href "#" :id "signout" } "sign out"]
-        [:script (format "var currentUser=\"%s\";" (session/get "email"))]])
-    (concat [[:a {:href "#" :id "signin" } "sign in"]
+    (concat [[:button#signout
+              {:type "button" :class "btn" :data-toggle "button"}
+              "sign out"]
+             [:script (format "var currentUser=\"%s\";"
+                              (session/get "email"))]])
+    (concat [[:button#signin {:type "button" :class "btn"
+                       :data-toggle "button"} "sign in"]
              [:script "var currentUser=null;"]])))
 
 (defpartial navigation [route]
@@ -31,28 +34,49 @@
                   pages)]
     (concat mods)))
 
+(defn get-active [route link]
+  (println route link)
+  (if (= route link)
+    {:class "active"}
+    nil))
+
 (defpartial header [route]
   ; "Output page header (navigation + login)."
-  [:div#header
-   [:table {:width "100%"} [:tr [:td (navigation route)]
-                           [:td {:align "right"} (login)]]]
-  [:h1 "Newsboard"]]
-)
+  (list
+   [:div.span10
+    [:div.navbar
+     [:div.navbar-inner
+      [:a {:class "brand" :href "#"} "NewsBoard"]
+      [:ul.nav
+       [:li (get-active route "/home") (link-to "/home" "Home")]
+       [:li (get-active route "/latest") (link-to "/latest" "Latest")]
+       [:li (get-active route "/comments") (link-to "#" "Comments")]]
+      ]]]
+   [:div.span2 (login)])
+  )
+
+; [:table {:width "100%"}
+;       [:tr [:td (navigation route)]
+;        [:td {:align "right"} (login)]]]
 
 (defpartial layout [route & content]
    (html5
    [:head
     [:title "Newsboard"]
-    (include-css "/css/newsboard.css")
+    ; (include-css "/css/newsboard.css")
+    [:link {:href "/css/bootstrap.css" :rel "stylesheet" :media "screen"}]
+;    (include-css "/css/bootstrap.css")
     [:script {:src "https://login.persona.org/include.js"}]
     [:script {:src "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"}]
     (include-js "/js/news.js")
+    (include-js "/js/bootstrap.js")
     ]
    [:body
-    [:div#wrapper
+    [:div {:class "container-fluid"}
      (header route)
-     [:div#messages]
-     [:div#body content]]]))
+     [:div.row
+      [:div#messages]]
+     content]]))
 
 (defpartial code [& content]
   ; "Wraps content into a code tag."
@@ -63,8 +87,8 @@
   ; if the regexp matches items is a link and it is embedded
   ; into an `a` tag."
   (if (re-matches #"https?://.*" (:data item))
-    (link-to {:class "submission"} (:data item) (:title item))
-    (list [:span (:title item)] "&nbsp" [:code (:data item)])))
+    (link-to {:class "submission"} (:data item) [:strong (:title item)])
+    (list [:strong (:title item)] "&nbsp" [:em (:data item)])))
 
 (defn tee [item]
   "debug function for threading macro"
@@ -92,12 +116,8 @@
         v (:votes item)
         i (:item-id item)
         s (:subm item)]
-    [:tr {:id i}
-     [:td {:class "votes"} v]
-     [:td {:class "voteb"}
-      [:button {:type "button" :disabled (be/voted? (session/get "email") i)
-                :onclick (format "voteUp(\"%s\", this)" i)} "++"]]
-     [:td {:class "data"}
+    [:div.row {:id i}
+     [:div.span10
       [:div {:class "item"} (render-submission item)]
       [:div {:class "meta"} (format "submitted by %s, %s ago. " s
                                     (render-date item))
@@ -109,23 +129,24 @@
        (when (and (session/get "email")
                   (= (session/get "email") s))
          (link-to {:onclick (format "deleteItem(\"%s\");" i)}
-                  "#" "delete"))]]]))
+                  "#" "delete"))]]
+     [:div.span1 v]
+     [:div.span1
+      [:button {:type "button" :disabled (be/voted? (session/get "email") i)
+                :onclick (format "voteUp(\"%s\", this)" i)} "++"]]]))
 
 (defpartial news-list [items]
   ; "Get item list and renders them."
-  [:table#items {:width "90%"}
-   (map render-item items)])
+   (map render-item items))
 
 
 (defpartial newContent []
   ; "Renders part of page used to type a new item."
   (if (session/get "email")
     (concat [[:h2 "Post new content:"]
-             (form-to [:post "/new"]
-                      (label "title" "Title:")
-                      (text-field "title")
-                      (label "new-content" "New content:")
-                      (text-field "new-content")
+             (form-to {:class "form-inline"} [:post "/new"]
+                      (text-field "title" "News Title")
+                      (text-field "new-content" "News Content")
                       (submit-button "post"))])))
 
 (defpage "/" []
@@ -139,14 +160,15 @@
 (defpage "/home" []
   ; "Home page, shows the list of content ordered by score
   ; and a form to input new items."
-  (nocache layout "Home"
-           [:h2 "News Ranking"]
+  (nocache layout "/home"
+           [:div.row
+            [:div.span6 [:h3 "News Ranking"]]]
            (news-list (be/redis-get be/key-score 19))
            (newContent)))
 
 (defpage "/latest" []
   ; "List content in reverse chronological order."
-  (nocache layout "Latest"
+  (nocache layout "/latest"
           [:h2 "Latest News"]
           (news-list (be/redis-get be/key-latest 19))
           (newContent)))
@@ -229,7 +251,7 @@
   (let [item (be/get-item id)
         comments (be/get-comments id)
         ]
-    (nocache layout "Comments"
+    (nocache layout "/comments"
             [:div#ctitle "Comments to: " [:span (render-submission item)]]
             [:div#comments (render-comments 0 (:children comments))]
             [:h3 "Insert new comment"]
